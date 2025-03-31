@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error;
+use error;
 
 /// XXX: When `const_fn` is implemented then make the value private to force
 /// the constructors to be used.
@@ -26,7 +26,8 @@ impl BitLength {
     pub fn from_usize_bits(bits: usize) -> BitLength { BitLength(bits) }
 
     #[inline]
-    pub fn from_usize_bytes(bytes: usize) -> Result<BitLength, error::Unspecified> {
+    pub fn from_usize_bytes(bytes: usize)
+                            -> Result<BitLength, error::Unspecified> {
         let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(BitLength::from_usize_bits(bits))
     }
@@ -52,7 +53,8 @@ impl BitLength {
     }
 
     #[inline]
-    pub fn try_sub(self, other: BitLength) -> Result<BitLength, error::Unspecified> {
+    pub fn try_sub(self, other: BitLength)
+                   -> Result<BitLength, error::Unspecified> {
         let sum = self.0.checked_sub(other.0).ok_or(error::Unspecified)?;
         Ok(BitLength(sum))
     }

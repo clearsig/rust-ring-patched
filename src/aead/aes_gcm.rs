@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{aead, bssl, c, error, polyfill};
+use {aead, bssl, c, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -117,7 +117,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use crate::{c, test};
+    use {c, test};
     use bits::BitLength;
     use super::AES_MAX_ROUNDS;
 
@@ -170,7 +170,7 @@ mod tests {
     #[repr(C)]
     pub struct AES_KEY {
         pub rd_key: [u32; 4 * (AES_MAX_ROUNDS + 1)],
-        pub rounds: c::uint,
+        pub rounds: usize,
     }
 
     extern "C" {

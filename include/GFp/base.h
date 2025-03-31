@@ -56,17 +56,14 @@
 
 // This file should be the first included by all BoringSSL headers.
 
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
 
-#if defined(_MSC_VER)
-#pragma warning(pop)
+#if defined(__cplusplus)
+extern "C" {
 #endif
+
 
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
@@ -125,27 +122,12 @@
 #define OPENSSL_UNUSED
 #endif
 
-#if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define OPENSSL_ASAN
-#endif
-#if __has_feature(thread_sanitizer)
-#define OPENSSL_TSAN
-#endif
-#if __has_feature(memory_sanitizer)
-#define OPENSSL_MSAN
-#define OPENSSL_ASM_INCOMPATIBLE
-#endif
-#endif
-
-#if defined(OPENSSL_ASM_INCOMPATIBLE)
-#undef OPENSSL_ASM_INCOMPATIBLE
-#if !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif  // OPENSSL_ASM_INCOMPATIBLE
-
 
 typedef struct bignum_st BIGNUM;
+
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
 
 #endif  // OPENSSL_HEADER_BASE_H

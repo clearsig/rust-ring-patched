@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 #include <GFp/arm_arch.h>
 
 #if __ARM_MAX_ARCH__>=7
@@ -442,4 +435,3 @@ Lctr32_done:
 	ldmia	sp!,{r4,r5,r6,r7,r8,r9,r10,pc}
 
 #endif
-#endif  // !OPENSSL_NO_ASM

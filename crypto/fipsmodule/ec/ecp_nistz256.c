@@ -23,6 +23,8 @@
 
 #include "ecp_nistz256.h"
 
+#include <assert.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "ecp_nistz.h"

@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 @ Copyright 2012-2016 The OpenSSL Project Authors. All Rights Reserved.
 @
 @ Licensed under the OpenSSL license (the "License").  You may not use
@@ -842,4 +835,3 @@ Lctr_enc_short_loop:
 	ldmia	sp!, {r4,r5,r6,r7,r8, pc}
 
 #endif
-#endif  // !OPENSSL_NO_ASM

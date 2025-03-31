@@ -14,6 +14,8 @@
 
 #include "ecp_nistz.h"
 
+#include <assert.h>
+
 
 /* Fills |str| with the bytewise little-endian encoding of |scalar|, where
  * |scalar| has |num_limbs| limbs. |str| is padded with zeros at the end up

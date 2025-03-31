@@ -4,7 +4,7 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -18,7 +18,8 @@
 // components.
 
 /// RSA signatures.
-use crate::{bits, der, error, limb};
+
+use {bits, der, limb, error};
 use untrusted;
 
 mod padding;
@@ -28,16 +29,24 @@ mod padding;
 pub use self::padding::RSAEncoding;
 
 pub use self::padding::{
-    RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,
-    RSA_PSS_SHA512,
+    RSA_PKCS1_SHA256,
+    RSA_PKCS1_SHA384,
+    RSA_PKCS1_SHA512,
+
+    RSA_PSS_SHA256,
+    RSA_PSS_SHA384,
+    RSA_PSS_SHA512
 };
 
+
 // Maximum RSA modulus size supported for signature verification (in bytes).
-const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
+const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize =
+    bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
 
 // Keep in sync with the documentation comment for `KeyPair`.
 #[cfg(feature = "rsa_signing")]
-const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength(4096);
+const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength =
+    bits::BitLength(4096);
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
@@ -57,9 +66,9 @@ enum RSAParametersID {
     RSA_PSS_2048_8192_SHA512,
 }
 
-fn parse_public_key(
-    input: untrusted::Input,
-) -> Result<(untrusted::Input, untrusted::Input), error::Unspecified> {
+fn parse_public_key(input: untrusted::Input)
+                    -> Result<(untrusted::Input, untrusted::Input),
+                              error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = der::positive_integer(input)?;

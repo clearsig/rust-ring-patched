@@ -51,6 +51,11 @@
 
 #include <GFp/base.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 // Raw AES functions.
 
 
@@ -69,5 +74,10 @@ struct aes_key_st {
   unsigned rounds;
 };
 typedef struct aes_key_st AES_KEY;
+
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
 
 #endif  // OPENSSL_HEADER_AES_H

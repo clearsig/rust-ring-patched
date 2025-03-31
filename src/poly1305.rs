@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use crate::{bssl, c, chacha, constant_time, error, polyfill};
+use {bssl, c, chacha, constant_time, error, polyfill};
 use core;
 
 impl SigningContext {
@@ -243,7 +243,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use crate::{error, test};
+    use {error, test};
     use core;
     use super::*;
 

@@ -25,7 +25,7 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use crate::{constant_time, error, init, poly1305, polyfill};
+use {constant_time, error, init, poly1305, polyfill};
 
 pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -224,6 +224,7 @@ struct Key {
 
 const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 
+// Keep this in sync with `aead_aes_gcm_ctx` in e_aes.c.
 const KEY_CTX_BUF_LEN: usize = self::aes_gcm::AES_KEY_CTX_BUF_LEN;
 
 impl Key {

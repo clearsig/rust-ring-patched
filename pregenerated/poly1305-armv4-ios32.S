@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 #include <GFp/arm_arch.h>
 
 .text
@@ -1192,4 +1185,3 @@ GFp_armcap_P:
 .indirect_symbol	_GFp_armcap_P
 .long	0
 #endif
-#endif  // !OPENSSL_NO_ASM

@@ -17,6 +17,10 @@
 
 #include "../../limbs/limbs.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #define P256_LIMBS (256u / LIMB_BITS)
 
 typedef struct {
@@ -40,5 +44,10 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index);
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index);
+
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* OPENSSL_HEADER_EC_ECP_NISTZ256_H */

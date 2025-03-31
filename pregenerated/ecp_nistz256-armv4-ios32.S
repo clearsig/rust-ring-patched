@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 #include <GFp/arm_arch.h>
 
 .text
@@ -1820,4 +1813,3 @@ _GFp_nistz256_point_add_affine:
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
 
-#endif  // !OPENSSL_NO_ASM

@@ -48,6 +48,8 @@
 
 #include <GFp/aes.h>
 
+#include <assert.h>
+
 #include <GFp/cpu.h>
 
 #include "internal.h"

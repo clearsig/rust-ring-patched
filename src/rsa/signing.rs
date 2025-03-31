@@ -4,7 +4,7 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -12,14 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    bigint::{self, Prime},
-    verification, N,
-};
-use arithmetic::montgomery::R;
 /// RSA PKCS#1 1.5 signatures.
-use crate::{bits, der, digest, error, pkcs8, rand};
+
+use {bits, der, digest, error, pkcs8};
+use rand;
 use std;
+use super::{bigint, bigint::Prime, N, verification};
+use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -32,6 +31,7 @@ pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
+    oneRR_mod_n: bigint::One<N, RR>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public_key: verification::Key,
@@ -93,8 +93,7 @@ impl KeyPair {
     ///   regarding these expectations are not done.
     /// * Section 6.4.1.2.1, Step 3: Since neither the public key nor the
     ///   expected modulus length is provided as a parameter, the consistency
-    ///   check between these values and the private key's value of n isn't
-    ///   done.
+    ///   check between these values and the private key's value of n isn't done.
     /// * Section 6.4.1.2.1, Step 5: No primality tests are done, both for
     ///   performance reasons and to avoid any side channels that such tests
     ///   would provide.
@@ -136,9 +135,13 @@ impl KeyPair {
     ///
     /// [RFC 5958]:
     ///     https://tools.ietf.org/html/rfc5958
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, error::Unspecified> {
-        const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
-        let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION, pkcs8::Version::V1Only, input)?;
+    ///
+    pub fn from_pkcs8(input: untrusted::Input)
+                      -> Result<Self, error::Unspecified> {
+        const RSA_ENCRYPTION: &[u8] =
+            include_bytes!("../data/alg-rsa-encryption.der");
+        let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION,
+                                          pkcs8::Version::V1Only, input)?;
         Self::from_der(der)
     }
 
@@ -157,7 +160,8 @@ impl KeyPair {
     ///
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
-    pub fn from_der(input: untrusted::Input) -> Result<Self, error::Unspecified> {
+    pub fn from_der(input: untrusted::Input)
+                    -> Result<Self, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let version = der::small_nonnegative_integer(input)?;
@@ -173,15 +177,18 @@ impl KeyPair {
                 let dQ = der::positive_integer(input)?;
                 let qInv = der::positive_integer(input)?;
 
-                let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
-                let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
+                let (p, p_bits) =
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
+                let (q, q_bits) =
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
 
                 // Our implementation of CRT-based modular exponentiation used
                 // requires that `p > q` so swap them if `p < q`. If swapped,
                 // `qInv` is recalculated below. `p != q` is verified
                 // implicitly below, e.g. when `q_mod_p` is constructed.
-                let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
-                    Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
+                let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) =
+                    match q.verify_less_than(&p) {
+                    Ok(_)  => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
                     Err(_) => {
                         // TODO: verify `q` and `qInv` are inverses (mod p).
                         ((q, q_bits, dQ), (p, p_bits, dP, None))
@@ -209,12 +216,8 @@ impl KeyPair {
 
                 // Step 1.c. We validate e >= 65537.
                 let public_key = verification::Key::from_modulus_and_exponent(
-                    n,
-                    e,
-                    bits::BitLength::from_usize_bits(2048),
-                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-                    65537,
-                )?;
+                    n, e, bits::BitLength::from_usize_bits(2048),
+                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS, 65537)?;
 
                 // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -255,6 +258,7 @@ impl KeyPair {
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
+                let oneRR_mod_n = bigint::One::newRR(&public_key.n);
                 let q_mod_n_decoded = q.to_elem(&public_key.n)?;
 
                 // TODO: Step 5.i
@@ -269,13 +273,12 @@ impl KeyPair {
                 // and then assume that these preconditions are enough to
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
-                let q_mod_n = bigint::elem_mul(
-                    public_key.n.oneRR().as_ref(),
-                    q_mod_n_decoded.clone(),
-                    &public_key.n,
-                );
+                let q_mod_n = bigint::elem_mul(oneRR_mod_n.as_ref(),
+                                               q_mod_n_decoded.clone(),
+                                               &public_key.n);
                 let p_mod_n = p.to_elem(&public_key.n)?;
-                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
+                let pq_mod_n =
+                    bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -288,7 +291,8 @@ impl KeyPair {
                 // has a bit length of half_n_bits + 1, this check gives us
                 // 2**half_n_bits <= d, and knowing d is odd makes the
                 // inequality strict.
-                let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
+                let (d, d_bits) =
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
                 if !(half_n_bits < d_bits) {
                     return Err(error::Unspecified);
                 }
@@ -305,10 +309,10 @@ impl KeyPair {
                 // 6.4.1.4.3 - Step 7.
 
                 // Step 7.a.
-                let p = PrivatePrime::new(p, dP)?;
+                let (p, p_oneRR) = PrivatePrime::new(p, dP)?;
 
                 // Step 7.b.
-                let q = PrivatePrime::new(q, dQ)?;
+                let (q, _) = PrivatePrime::new(q, dQ)?;
 
                 let q_mod_p = q.modulus.to_elem(&p.modulus);
 
@@ -318,9 +322,10 @@ impl KeyPair {
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
-                    let q_mod_p =
-                        bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p.clone(), &p.modulus);
-                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
+                    let q_mod_p = bigint::elem_mul(p_oneRR.as_ref(),
+                                                   q_mod_p.clone(),
+                                                   &p.modulus);
+                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
                 };
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
@@ -328,16 +333,19 @@ impl KeyPair {
                 // do modulo with an even modulus.
 
                 // Step 7.f.
-                let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
+                let qInv =
+                    bigint::elem_mul(p_oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
-                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n)
+                let qq =
+                    bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n)
                     .into_modulus::<QQ>()?;
 
                 Ok(Self {
                     p,
                     q,
                     qInv,
+                    oneRR_mod_n,
                     q_mod_n,
                     qq,
                     public_key,
@@ -349,18 +357,23 @@ impl KeyPair {
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize { self.public_key.modulus_len() }
+    pub fn public_modulus_len(&self) -> usize {
+        self.public_key.modulus_len()
+    }
 }
 
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,
+    oneR: bigint::One<M, R>,
+    oneRRR: bigint::One<M, RRR>,
 }
 
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, error::Unspecified> {
+    fn new(p: bigint::Nonnegative, dP: untrusted::Input)
+           -> Result<(Self, bigint::One<M, RR>), error::Unspecified> {
         let p = bigint::Modulus::from(p)?;
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
@@ -375,27 +388,28 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        Ok(PrivatePrime {
+        let oneRR = bigint::One::newRR(&p);
+        let oneR = bigint::One::newR(&oneRR, &p);
+        let oneRRR = bigint::One::newRRR(oneRR.clone(), &p);
+
+        Ok((PrivatePrime {
             modulus: p,
             exponent: dP,
-        })
+            oneR: oneR,
+            oneRRR: oneRRR,
+        }, oneRR))
     }
 }
 
-fn elem_exp_consttime<M, MM>(
-    c: &bigint::Elem<MM>, p: &PrivatePrime<M>,
-) -> Result<bigint::Elem<M>, error::Unspecified>
-where
-    M: bigint::NotMuchSmallerModulus<MM>,
-    M: Prime,
-{
+fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
+                             -> Result<bigint::Elem<M>, error::Unspecified>
+                             where M: bigint::NotMuchSmallerModulus<MM>,
+                                   M: Prime {
     let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
-    // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
-    // in the Smooth CRT-RSA paper.
-    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, &p.modulus);
-    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, &p.modulus);
-    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.modulus)
+    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus);
+    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
+
 
 // Type-level representations of the different moduli used in RSA signing, in
 // addition to `super::N`. See `super::bigint`'s modulue-level documentation.
@@ -430,6 +444,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
+
 /// State used for RSA Signing. Feature: `rsa_signing`.
 //
 // TODO: Remove this; it's not needed if we don't have RSA blinding.
@@ -439,8 +454,11 @@ pub struct SigningState {
 
 impl SigningState {
     /// Construct a signing state appropriate for use with the given key pair.
-    pub fn new(key_pair: std::sync::Arc<KeyPair>) -> Result<Self, error::Unspecified> {
-        Ok(SigningState { key_pair })
+    pub fn new(key_pair: std::sync::Arc<KeyPair>)
+               -> Result<Self, error::Unspecified> {
+        Ok(SigningState {
+            key_pair: key_pair,
+        })
     }
 
     /// The key pair. This can be used, for example, to access the key pair's
@@ -463,10 +481,9 @@ impl SigningState {
     /// constant time to protect the private key from side channel attacks. On
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
-    pub fn sign(
-        &mut self, padding_alg: &'static ::signature::RSAEncoding, rng: &rand::SecureRandom,
-        msg: &[u8], signature: &mut [u8],
-    ) -> Result<(), error::Unspecified> {
+    pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
+                rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
+                -> Result<(), error::Unspecified> {
         let mod_bits = self.key_pair.public_key.n_bits;
         if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
             return Err(error::Unspecified);
@@ -483,7 +500,8 @@ impl SigningState {
         let n = &key.public_key.n;
 
         // Step 1. The value zero is also rejected.
-        let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(signature), n)?;
+        let base = bigint::Elem::from_be_bytes_padded(
+            untrusted::Input::from(signature), n)?;
 
         // Step 2
         let c = base;
@@ -521,7 +539,10 @@ impl SigningState {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = bigint::elem_exp_vartime(m.clone(), key.public_key.e, n);
+            let computed =
+                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), n);
+            let verify =
+                bigint::elem_exp_vartime(computed, key.public_key.e, n);
             let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
@@ -535,11 +556,12 @@ impl SigningState {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
-    use crate::{rand, signature};
+    use {rand, signature};
     use std;
     use untrusted;
 
@@ -557,25 +579,25 @@ mod tests {
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
         let key_pair = std::sync::Arc::new(key_pair);
-        let mut signing_state = signature::RSASigningState::new(key_pair).unwrap();
+        let mut signing_state =
+            signature::RSASigningState::new(key_pair).unwrap();
 
         // The output buffer is one byte too short.
-        let mut signature = vec![0; signing_state.key_pair().public_modulus_len() - 1];
+        let mut signature =
+            vec![0; signing_state.key_pair().public_modulus_len() - 1];
 
-        assert!(signing_state
-            .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-            .is_err());
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_err());
 
         // The output buffer is the right length.
         signature.push(0);
-        assert!(signing_state
-            .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-            .is_ok());
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_ok());
+
 
         // The output buffer is one byte too long.
         signature.push(0);
-        assert!(signing_state
-            .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-            .is_err());
+        assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+                                   &mut signature).is_err());
     }
 }

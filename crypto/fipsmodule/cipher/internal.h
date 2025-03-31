@@ -64,6 +64,10 @@
 #include "../../internal.h"
 #include "../modes/internal.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Preconditions for AEAD implementation methods. */
 
 // aead_check_alias returns 0 if |out| points within the buffer determined by
@@ -99,6 +103,10 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes);
 
+#endif
+
+#if defined(__cplusplus)
+}  // extern C
 #endif
 
 #endif  // OPENSSL_HEADER_CIPHER_INTERNAL_H

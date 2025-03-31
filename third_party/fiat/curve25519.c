@@ -27,15 +27,7 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
 #include <string.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 #include <GFp/cpu.h>
 #include <GFp/mem.h>
@@ -1874,7 +1866,7 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
 //
 // Preconditions:
 //   a[31] <= 127
-void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
   signed char e[64];
   signed char carry;
   ge_p1p1 r;

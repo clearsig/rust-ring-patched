@@ -1,8 +1,10 @@
-use crate::digest;
+use digest;
 
-use super::super::ops::{Scalar, UnreducedScalar, SCALAR_LEN};
+use super::super::ops::{Scalar, SCALAR_LEN, UnreducedScalar};
 
-pub fn eddsa_digest(signature_r: &[u8], public_key: &[u8], msg: &[u8]) -> digest::Digest {
+
+pub fn eddsa_digest(signature_r: &[u8], public_key: &[u8], msg: &[u8])
+                    -> digest::Digest {
     let mut ctx = digest::Context::new(&digest::SHA512);
     ctx.update(signature_r);
     ctx.update(public_key);
@@ -18,6 +20,6 @@ pub fn digest_scalar(digest: digest::Digest) -> Scalar {
     scalar.copy_from_slice(&unreduced[..SCALAR_LEN]);
     scalar
 }
-extern "C" {
+extern  {
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }

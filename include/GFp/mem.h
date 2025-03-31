@@ -61,6 +61,11 @@
 
 #include <stdlib.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 // Memory and string functions, see also buf.h.
 //
 // OpenSSL has, historically, had a complex set of malloc debugging options.
@@ -79,5 +84,10 @@
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
 OPENSSL_EXPORT int GFp_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
+
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
 
 #endif  // OPENSSL_HEADER_MEM_H

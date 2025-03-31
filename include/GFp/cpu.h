@@ -63,6 +63,11 @@
 
 #include <GFp/base.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 // Runtime CPU feature support
 
 
@@ -168,5 +173,10 @@ static inline int GFp_is_ARMv8_PMULL_capable(void) {
 int GFp_is_PPC64LE_vcrypto_capable(void);
 
 #endif  // OPENSSL_PPC64LE
+
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
 
 #endif  // OPENSSL_HEADER_CPU_H

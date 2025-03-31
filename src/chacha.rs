@@ -5,7 +5,7 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::c;
+use c;
 use core;
 use polyfill::slice::u32_from_le_u8;
 
@@ -82,11 +82,11 @@ extern {
 
 pub const KEY_LEN_IN_BYTES: usize = 256 / 8;
 
-pub const NONCE_LEN: usize = 12; // 96 bits
+pub const NONCE_LEN: usize = 12; /* 96 bits */
 
 #[cfg(test)]
 mod tests {
-    use crate::test;
+    use test;
     use super::*;
     use super::GFp_ChaCha20_ctr32;
 

@@ -4,7 +4,7 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -140,7 +140,9 @@
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&pkcs8_bytes))?;
+//! let key_pair =
+//!    signature::Ed25519KeyPair::from_pkcs8(
+//!             untrusted::Input::from(&pkcs8_bytes))?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &[u8] = b"hello, world";
@@ -276,10 +278,9 @@
 //! # }
 //! ```
 
+
 use core;
-#[cfg(feature = "use_heap")]
-use crate::rand;
-use crate::{error, init, private};
+use {error, init, private, rand};
 use untrusted;
 
 #[cfg(feature = "use_heap")]
@@ -287,22 +288,30 @@ use std;
 
 pub use ec::suite_b::ecdsa::{
     signing::{
-        Key as ECDSAKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
+        Key as ECDSAKeyPair,
+        ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
         ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
     },
+
     verification::{
-        Algorithm as ECDSAVerification, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
-        ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
-        ECDSA_P384_SHA384_FIXED,
+        Algorithm as ECDSAVerification,
+        ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
+        ECDSA_P256_SHA384_ASN1,
+        ECDSA_P384_SHA256_ASN1,
+        ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
     },
 };
 
 pub use ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN;
 
-pub use ec::curve25519::ed25519::verification::{EdDSAParameters, ED25519};
+pub use ec::curve25519::ed25519::verification::{
+    EdDSAParameters,
+    ED25519,
+};
 
 pub use ec::curve25519::ed25519::signing::{
-    KeyPair as Ed25519KeyPair, PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
+    KeyPair as Ed25519KeyPair,
+    PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
@@ -330,9 +339,16 @@ pub use rsa::RSAParameters;
 
 #[cfg(feature = "use_heap")]
 pub use rsa::verification::{
-    RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
-    RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
-    RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+    RSA_PKCS1_2048_8192_SHA1,
+    RSA_PKCS1_2048_8192_SHA256,
+    RSA_PKCS1_2048_8192_SHA384,
+    RSA_PKCS1_2048_8192_SHA512,
+
+    RSA_PKCS1_3072_8192_SHA384,
+
+    RSA_PSS_2048_8192_SHA256,
+    RSA_PSS_2048_8192_SHA384,
+    RSA_PSS_2048_8192_SHA512,
 };
 
 pub use signature_impl::Signature;
@@ -347,12 +363,10 @@ pub mod primitive {
 
 /// A key pair for signing.
 #[derive(Debug)]
-#[cfg(feature = "use_heap")]
 pub struct KeyPair {
     inner: std::boxed::Box<KeyPairImpl + Send + Sync>,
 }
 
-#[cfg(feature = "use_heap")]
 impl KeyPair {
     pub(crate) fn new<I: KeyPairImpl + Sync>(inner: I) -> Self {
         Self {
@@ -361,11 +375,9 @@ impl KeyPair {
     }
 }
 
-#[cfg(feature = "use_heap")]
 pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
-    fn sign(
-        &self, rng: &rand::SecureRandom, msg: untrusted::Input,
-    ) -> Result<Signature, error::Unspecified>;
+    fn sign(&self, rng: &rand::SecureRandom, msg: untrusted::Input)
+            -> Result<Signature, error::Unspecified>;
 }
 
 /// An algorithm for signing.
@@ -373,27 +385,25 @@ pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
 pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed {
     /// Parses the key out of the given PKCS#8 document, verifying that it is
     /// valid for the algorithm.
-    fn from_pkcs8(&'static self, input: untrusted::Input) -> Result<KeyPair, error::Unspecified>;
+    fn from_pkcs8(&'static self, input: untrusted::Input)
+        -> Result<KeyPair, error::Unspecified>;
 }
 
 /// Returns a key for signing that is parsed from a PKCS#8 document.
 ///
 /// The key is checked to ensure it is valid for the given algorithm.
-#[cfg(feature = "use_heap")]
 #[inline]
-pub fn key_pair_from_pkcs8(
-    alg: &'static SigningAlgorithm, input: untrusted::Input,
-) -> Result<KeyPair, error::Unspecified> {
+pub fn key_pair_from_pkcs8(alg: &'static SigningAlgorithm, input: untrusted::Input)
+    -> Result<KeyPair, error::Unspecified>
+{
     alg.from_pkcs8(input)
 }
 
-/// Returns a signature of the given data using the given key. The signing may
-/// or may not use `rng`, depending on the `key_pair's algorithm.
-#[cfg(feature = "use_heap")]
+/// Returns a signature of the given data using the given key. The signing may or may
+/// not use `rng`, depending on the `key_pair's algorithm.
 #[inline]
-pub fn sign(
-    key_pair: &KeyPair, rng: &rand::SecureRandom, msg: untrusted::Input,
-) -> Result<Signature, error::Unspecified> {
+pub fn sign(key_pair: &KeyPair, rng: &rand::SecureRandom, msg: untrusted::Input)
+            -> Result<Signature, error::Unspecified> {
     key_pair.inner.sign(rng, msg)
 }
 
@@ -401,9 +411,8 @@ pub fn sign(
 pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Sealed {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
-    fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
-    ) -> Result<(), error::Unspecified>;
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input) -> Result<(), error::Unspecified>;
 }
 
 /// Verify the signature `signature` of message `msg` with the public key
@@ -424,18 +433,17 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Sealed {
 /// }
 ///
 /// # #[cfg(feature = "use_heap")]
-/// fn verify_rsa_pkcs1_sha256(
-///     public_key: untrusted::Input, msg: untrusted::Input, sig: untrusted::Input,
-/// ) -> Result<(), Error> {
-///     signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key, msg, sig)
-///         .map_err(|_| Error::InvalidSignature)
+/// fn verify_rsa_pkcs1_sha256(public_key: untrusted::Input,
+///                            msg: untrusted::Input, sig: untrusted::Input)
+///                            -> Result<(), Error> {
+///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
+///                      msg, sig).map_err(|_| Error::InvalidSignature)
 /// }
 /// # fn main() { }
 /// ```
-pub fn verify(
-    alg: &VerificationAlgorithm, public_key: untrusted::Input, msg: untrusted::Input,
-    signature: untrusted::Input,
-) -> Result<(), error::Unspecified> {
+pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
+              msg: untrusted::Input, signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
     init::init_once();
     alg.verify(public_key, msg, signature)
 }

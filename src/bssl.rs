@@ -12,11 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{c, error};
+use {c, error};
 
-/// A `c::int` returned from a foreign function containing **1** if the function
-/// was successful or **0** if an error occurred. This is the convention used by
-/// C code in `ring`.
+/// A `c::int` returned from a foreign function containing **1** if the function was successful
+/// or **0** if an error occurred. This is the convention used by C code in `ring`.
 #[derive(Clone, Copy, Debug)]
 #[must_use]
 #[repr(transparent)]
@@ -46,7 +45,7 @@ macro_rules! bssl_test {
         #[test]
         fn $fn_name() {
             use $crate::{c, init};
-            extern "C" {
+            extern {
                 #[must_use]
                 fn $bssl_test_main_fn_name() -> c::int;
             }
@@ -54,26 +53,25 @@ macro_rules! bssl_test {
             init::init_once();
             ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
 
-            let result = unsafe { $bssl_test_main_fn_name() };
+            let result = unsafe {
+                $bssl_test_main_fn_name()
+            };
             assert_eq!(result, 0);
         }
-    };
+    }
 }
 
 #[cfg(test)]
 mod tests {
     mod result {
+        use {bssl, c};
         use core::mem;
-        use crate::{bssl, c};
 
         #[test]
         fn size_and_alignment() {
             type Underlying = c::int;
             assert_eq!(mem::size_of::<bssl::Result>(), mem::size_of::<Underlying>());
-            assert_eq!(
-                mem::align_of::<bssl::Result>(),
-                mem::align_of::<Underlying>()
-            );
+            assert_eq!(mem::align_of::<bssl::Result>(), mem::align_of::<Underlying>());
         }
 
         #[test]

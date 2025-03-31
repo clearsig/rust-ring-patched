@@ -1,9 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM)
 .text	
 .extern	GFp_ia32cap_P

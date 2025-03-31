@@ -4,7 +4,7 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
@@ -12,11 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{bigint, parse_public_key, RSAParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 /// RSA PKCS#1 1.5 signatures.
+
 use core;
-use crate::{bits, digest, error, private, signature};
+use {bits, digest, error, private, signature};
+use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
+            parse_public_key};
 use untrusted;
+
 
 #[derive(Debug)]
 pub struct Key {
@@ -28,8 +31,9 @@ pub struct Key {
 impl Key {
     pub fn from_modulus_and_exponent(
         n: untrusted::Input, e: untrusted::Input, n_min_bits: bits::BitLength,
-        n_max_bits: bits::BitLength, e_min_value: u64,
-    ) -> Result<Self, error::Unspecified> {
+        n_max_bits: bits::BitLength, e_min_value: u64)
+        -> Result<Self, error::Unspecified>
+    {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
         // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
@@ -60,7 +64,14 @@ impl Key {
             return Err(error::Unspecified);
         }
 
-        // Step 2 / Step b.
+        // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
+        // `e >= 65537`. We enforce this when signing, but are more flexible in
+        // verification, for compatibility. Only small public exponents are
+        // supported.
+        debug_assert!(e_min_value >= 3);
+        debug_assert!(e_min_value & 1 == 1); // `e_min_value` is odd.
+        debug_assert!(e_min_value <= bigint::PUBLIC_EXPONENT_MAX_VALUE);
+
         // Step 3 / Step c for `e`.
         let e = bigint::PublicExponent::from_be_bytes(e, e_min_value)?;
 
@@ -78,13 +89,15 @@ impl Key {
     ///
     /// A signature has the same length as the public modulus.
     #[cfg(feature = "rsa_signing")]
-    pub fn modulus_len(&self) -> usize { self.n_bits.as_usize_bytes_rounded_up() }
+    pub fn modulus_len(&self) -> usize {
+        self.n_bits.as_usize_bytes_rounded_up()
+    }
 }
 
 impl signature::VerificationAlgorithm for RSAParameters {
-    fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
-    ) -> Result<(), error::Unspecified> {
+    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
+              signature: untrusted::Input)
+              -> Result<(), error::Unspecified> {
         let public_key = parse_public_key(public_key)?;
         verify_rsa(self, public_key, msg, signature)
     }
@@ -96,20 +109,16 @@ impl core::fmt::Debug for RSAParameters {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         use super::RSAParametersID::*;
         // XXX: This doesn't include the padding algorithm nor the size range.
-        write!(
-            f,
-            "ring::signature::{}",
-            match self.id {
-                RSA_PKCS1_2048_8192_SHA1 => "RSA_PKCS1_2048_8192_SHA1",
-                RSA_PKCS1_2048_8192_SHA256 => "RSA_PKCS1_2048_8192_SHA256",
-                RSA_PKCS1_2048_8192_SHA384 => "RSA_PKCS1_2048_8192_SHA384",
-                RSA_PKCS1_2048_8192_SHA512 => "RSA_PKCS1_2048_8192_SHA512",
-                RSA_PKCS1_3072_8192_SHA384 => "RSA_PKCS1_3072_8192_SHA384",
-                RSA_PSS_2048_8192_SHA256 => "RSA_PSS_2048_8192_SHA256",
-                RSA_PSS_2048_8192_SHA384 => "RSA_PSS_2048_8192_SHA384",
-                RSA_PSS_2048_8192_SHA512 => "RSA_PSS_2048_8192_SHA512",
-            }
-        )
+        write!(f, "ring::signature::{}", match self.id {
+            RSA_PKCS1_2048_8192_SHA1 => "RSA_PKCS1_2048_8192_SHA1",
+            RSA_PKCS1_2048_8192_SHA256 => "RSA_PKCS1_2048_8192_SHA256",
+            RSA_PKCS1_2048_8192_SHA384 => "RSA_PKCS1_2048_8192_SHA384",
+            RSA_PKCS1_2048_8192_SHA512 => "RSA_PKCS1_2048_8192_SHA512",
+            RSA_PKCS1_3072_8192_SHA384 => "RSA_PKCS1_3072_8192_SHA384",
+            RSA_PSS_2048_8192_SHA256 => "RSA_PSS_2048_8192_SHA256",
+            RSA_PSS_2048_8192_SHA384 => "RSA_PSS_2048_8192_SHA384",
+            RSA_PSS_2048_8192_SHA512 => "RSA_PSS_2048_8192_SHA512",
+        })
     }
 }
 
@@ -119,79 +128,49 @@ macro_rules! rsa_params {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: RSAParameters = RSAParameters {
-            padding_alg: $PADDING_ALGORITHM,
-            min_bits: bits::BitLength($min_bits),
-            id: super::RSAParametersID::$VERIFY_ALGORITHM,
-        };
-    };
+        pub static $VERIFY_ALGORITHM: RSAParameters =
+            RSAParameters {
+                padding_alg: $PADDING_ALGORITHM,
+                min_bits: bits::BitLength($min_bits),
+                id: super::RSAParametersID::$VERIFY_ALGORITHM,
+            };
+    }
 }
 
-rsa_params!(
-    RSA_PKCS1_2048_8192_SHA1,
-    2048,
-    &super::padding::RSA_PKCS1_SHA1,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+rsa_params!(RSA_PKCS1_2048_8192_SHA1, 2048, &super::padding::RSA_PKCS1_SHA1,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PKCS1_2048_8192_SHA256,
-    2048,
-    &super::RSA_PKCS1_SHA256,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA256, 2048, &super::RSA_PKCS1_SHA256,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-256.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PKCS1_2048_8192_SHA384,
-    2048,
-    &super::RSA_PKCS1_SHA384,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA384, 2048, &super::RSA_PKCS1_SHA384,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PKCS1_2048_8192_SHA512,
-    2048,
-    &super::RSA_PKCS1_SHA512,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PKCS1_2048_8192_SHA512, 2048, &super::RSA_PKCS1_SHA512,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-512.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PKCS1_3072_8192_SHA384,
-    3072,
-    &super::RSA_PKCS1_SHA384,
-    "Verification of signatures using RSA keys of 3072-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PKCS1_3072_8192_SHA384, 3072, &super::RSA_PKCS1_SHA384,
+            "Verification of signatures using RSA keys of 3072-8192 bits,
              PKCS#1.5 padding, and SHA-384.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
+             `ring::signature`'s module-level documentation for more details.");
 
-rsa_params!(
-    RSA_PSS_2048_8192_SHA256,
-    2048,
-    &super::RSA_PSS_SHA256,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+rsa_params!(RSA_PSS_2048_8192_SHA256, 2048, &super::RSA_PSS_SHA256,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-256.\n\nSee \"`RSA_PSS_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PSS_2048_8192_SHA384,
-    2048,
-    &super::RSA_PSS_SHA384,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PSS_2048_8192_SHA384, 2048, &super::RSA_PSS_SHA384,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-384.\n\nSee \"`RSA_PSS_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
-rsa_params!(
-    RSA_PSS_2048_8192_SHA512,
-    2048,
-    &super::RSA_PSS_SHA512,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
+             `ring::signature`'s module-level documentation for more details.");
+rsa_params!(RSA_PSS_2048_8192_SHA512, 2048, &super::RSA_PSS_SHA512,
+            "Verification of signatures using RSA keys of 2048-8192 bits,
              PSS padding, and SHA-512.\n\nSee \"`RSA_PSS_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
+             `ring::signature`'s module-level documentation for more details.");
+
 
 /// Lower-level API for the verification of RSA signatures.
 ///
@@ -218,17 +197,19 @@ rsa_params!(
 // testing `verify_rsa` directly, but the testing work for RSA PKCS#1
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
-pub fn verify_rsa(
-    params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
-    signature: untrusted::Input,
-) -> Result<(), error::Unspecified> {
-    let max_bits = bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
+pub fn verify_rsa(params: &RSAParameters,
+                  (n, e): (untrusted::Input, untrusted::Input),
+                  msg: untrusted::Input, signature: untrusted::Input)
+                  -> Result<(), error::Unspecified> {
+    let max_bits = bits::BitLength::from_usize_bytes(
+        PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let Key { n, e, n_bits } = Key::from_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
+    let Key { n, e, n_bits } =
+        Key::from_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
@@ -244,6 +225,8 @@ pub fn verify_rsa(
     }
 
     // Step 2.
+    // Montgomery encode `s`.
+    let s = bigint::elem_mul(bigint::One::newRR(&n).as_ref(), s, &n);
     let m = bigint::elem_exp_vartime(s, e, &n);
     let m = m.into_unencoded(&n);
 
@@ -253,8 +236,8 @@ pub fn verify_rsa(
     m.fill_be_bytes(decoded);
 
     // Verify the padded message is correct.
-    let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
-    untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
-        params.padding_alg.verify(&m_hash, m, n_bits)
-    })
+    let m_hash = digest::digest(params.padding_alg.digest_alg(),
+                                msg.as_slice_less_safe());
+    untrusted::Input::from(decoded).read_all(
+        error::Unspecified, |m| params.padding_alg.verify(&m_hash, m, n_bits))
 }

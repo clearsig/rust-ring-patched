@@ -106,16 +106,9 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 #include <GFp/mem.h>
 

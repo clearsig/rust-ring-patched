@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 #if defined(__arm__)
 #include <GFp/arm_arch.h>
 
@@ -1178,4 +1171,3 @@ poly1305_emit_neon:
 .comm	GFp_armcap_P,4,4
 #endif
 #endif
-#endif  // !OPENSSL_NO_ASM

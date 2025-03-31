@@ -109,22 +109,15 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
-#include <GFp/base.h> // Must be first.
-
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
 #include <assert.h>
 
 #if defined(__clang__) || defined(_MSC_VER)
 #include <string.h>
 #endif
 
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+#include <stddef.h>
 
+#include <GFp/base.h>
 #include <GFp/type_check.h>
 
 #if defined(_MSC_VER)
@@ -140,12 +133,19 @@
 // reports support for C11.
 #define alignas(x) __attribute__ ((aligned (x)))
 #define alignof(x) __alignof__ (x)
-#elif defined(_MSC_VER)
+#elif !defined(__cplusplus)
+#if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
 #define alignof(x) __alignof(x)
 #else
 #include <stdalign.h>
 #endif
+#endif
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
@@ -375,5 +375,10 @@ static inline uint64_t from_be_u64(uint64_t x) {
 #endif
   return x;
 }
+
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

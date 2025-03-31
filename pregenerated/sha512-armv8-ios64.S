@@ -1,10 +1,3 @@
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
-
-#if !defined(OPENSSL_NO_ASM)
 // Copyright 2014-2016 The OpenSSL Project Authors. All Rights Reserved.
 //
 // Licensed under the OpenSSL license (the "License").  You may not use
@@ -1078,4 +1071,3 @@ LGFp_armcap_P:
 #ifndef	__KERNEL__
 .comm	_GFp_armcap_P,4,4
 #endif
-#endif  // !OPENSSL_NO_ASM
