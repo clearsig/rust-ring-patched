@@ -377,7 +377,8 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         })
         .unwrap();
 
-    let is_git = std::fs::metadata(".git").is_ok();
+    // let is_git = std::fs::metadata(".git").is_ok();
+    let is_git = false;
 
     let use_pregenerated = !is_git;
     let warnings_are_errors = is_git;
